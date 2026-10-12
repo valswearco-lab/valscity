@@ -1,0 +1,1457 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>VALS · City</title>
+<style>
+:root {
+  --cream:#FAF7F2; --ivory:#F2E8DC; --tan:#C9A882; --tan2:#E8D5BB;
+  --brown:#2C2420; --brown2:#6B4F3A; --sage:#B8C4B1; --sage2:#7A9170;
+  --rose:#E8C4B8; --rose2:#D4A898; --slate:#8A9BA8;
+  --green:#5A8A6A; --red:#A05050; --gold:#C9A882;
+  --border:#E0D4C4; --muted:#9A8878; --white:#FFFEFB;
+  --ground:#D4C8B4; --grass:#C4D0B4; --path:#C8BCB0; --sky1:#D8ECF8; --sky2:#EAE0D4;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'Inter','Helvetica Neue',sans-serif;background:var(--cream);color:var(--brown);overflow:hidden}
+
+/* ── HEADER ── */
+.hdr{position:fixed;top:0;left:0;right:0;z-index:100;height:52px;
+  background:rgba(250,247,242,0.94);backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--border);display:flex;align-items:center;
+  justify-content:space-between;padding:0 16px;gap:12px}
+.logo{font-family:Georgia,serif;font-size:18px;letter-spacing:5px;font-weight:700;color:var(--brown);flex-shrink:0}
+.hdr-stats{display:flex;gap:16px;align-items:center}
+.hs{text-align:center}
+.hs-v{font-size:13px;font-weight:700;line-height:1}
+.hs-l{font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-top:1px}
+.live-dot{width:6px;height:6px;border-radius:50%;background:#5A8A6A;display:inline-block;margin-right:4px;animation:blink 2s ease infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ── CITY CONTAINER ── */
+.city-wrap{position:fixed;inset:0;top:52px;bottom:60px;overflow:hidden;cursor:grab}
+.city-wrap:active{cursor:grabbing}
+
+/* Sky gradient */
+.sky-bg{position:absolute;inset:0;
+  background:linear-gradient(180deg,#C8E4F8 0%,#DCF0F8 25%,#EEE4D8 55%,#D8CCBC 100%);
+  pointer-events:none}
+
+/* ── ISOMETRIC SCENE ── */
+.iso-scene{position:absolute;left:50%;top:50%;
+  transform:translate(-50%,-50%) rotateX(60deg) rotateZ(-45deg);
+  transform-style:preserve-3d;
+  width:900px;height:900px;
+  transition:transform .1s ease}
+
+/* Ground plane */
+.ground{position:absolute;inset:0;
+  background:linear-gradient(135deg,#D4CCBC 0%,#C8C0AC 50%,#BEB4A0 100%);
+  border-radius:12px}
+
+/* Grass patches */
+.grass{position:absolute;background:#C4D0B0;border-radius:50%}
+
+/* Paths */
+.path{position:absolute;background:var(--path);border-radius:2px}
+
+/* ── BUILDINGS ── */
+.b{position:absolute;transform-style:preserve-3d;cursor:pointer;transition:filter .2s}
+.b:hover{filter:brightness(1.08) drop-shadow(0 2px 8px rgba(201,168,130,.5))}
+.b.sel{filter:brightness(1.12) drop-shadow(0 3px 14px rgba(201,168,130,.7))}
+
+/* building faces */
+.b-top,.b-front,.b-right{position:absolute}
+.b-top{transform-origin:0 0}
+.b-front{transform-origin:0 0}
+.b-right{transform-origin:0 0}
+
+/* ── CHARACTERS (animated SVG) ── */
+.char-wrap{position:absolute;transform-style:preserve-3d;pointer-events:none;z-index:50}
+.char-svg{width:32px;height:44px;display:block}
+/* walking path animation via keyframes per char */
+.char-shadow{position:absolute;bottom:-4px;left:50%;transform:translateX(-50%);
+  width:20px;height:6px;background:rgba(0,0,0,0.12);border-radius:50%;filter:blur(2px)}
+
+/* ── PANEL ── */
+.overlay{position:fixed;inset:0;background:rgba(44,36,32,.25);z-index:200;
+  opacity:0;pointer-events:none;transition:opacity .25s}
+.overlay.open{opacity:1;pointer-events:all}
+.panel{position:fixed;right:0;top:0;bottom:0;width:min(480px,100vw);
+  background:var(--white);z-index:201;
+  transform:translateX(100%);transition:transform .32s cubic-bezier(.32,0,.2,1);
+  display:flex;flex-direction:column;box-shadow:-6px 0 24px rgba(44,36,32,.1)}
+.panel.open{transform:translateX(0)}
+.ph{padding:18px 20px;border-bottom:1px solid var(--border);
+  display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+.ph-title{font-family:Georgia,serif;font-size:17px;font-weight:700;display:flex;align-items:center;gap:8px}
+.ph-emoji{font-size:20px}
+.ph-close{width:30px;height:30px;border-radius:50%;border:1px solid var(--border);
+  background:transparent;cursor:pointer;font-size:14px;color:var(--muted);
+  display:flex;align-items:center;justify-content:center}
+.ph-close:hover{background:var(--ivory)}
+.pb{flex:1;overflow-y:auto;padding:16px 20px}
+
+/* ── DATA COMPONENTS ── */
+.kgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:8px;margin-bottom:14px}
+.kbox{background:var(--ivory);border-radius:10px;padding:11px 8px;text-align:center;border:1px solid var(--border)}
+.kbox.hi{background:var(--tan2);border-color:var(--tan)}
+.kv{font-family:Georgia,serif;font-size:17px;font-weight:700;line-height:1}
+.kl{font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-top:3px}
+.sh{display:flex;justify-content:space-between;align-items:center;margin:14px 0 7px}
+.st{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted)}
+.bsm{padding:5px 11px;border-radius:6px;border:none;cursor:pointer;font-size:11px;font-weight:700;
+  background:var(--brown);color:var(--white)}
+.tbl{width:100%;border-collapse:collapse;font-size:12px}
+.tbl th{text-align:left;padding:5px 7px;border-bottom:1px solid var(--border);
+  font-size:8px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);font-weight:700}
+.tbl td{padding:7px;border-bottom:1px solid var(--ivory);vertical-align:top}
+.tbl tr:hover td{background:var(--ivory);cursor:pointer}
+.nr{text-align:right;font-variant-numeric:tabular-nums}
+.pos{color:var(--green);font-weight:700}
+.neg{color:var(--red);font-weight:700}
+.tag{display:inline-block;padding:2px 7px;border-radius:99px;font-size:9px;font-weight:700}
+.tg{background:var(--tan2);color:var(--brown2)}
+.ts{background:#E0EAD8;color:var(--sage2)}
+.tr{background:#FEE2E2;color:var(--red)}
+.bw{background:var(--ivory);border-radius:99px;height:6px;overflow:hidden;margin-top:3px}
+.bf{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--tan2),var(--tan))}
+/* form */
+.fr{margin-bottom:10px}
+.fl{font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:4px;display:block}
+.fi{width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;
+  font-size:13px;font-family:inherit;background:var(--ivory);color:var(--brown)}
+.fi:focus{outline:none;border-color:var(--tan)}
+.cr{display:flex;flex-wrap:wrap;gap:5px}
+.ch{padding:4px 10px;border-radius:99px;border:1.5px solid var(--border);
+  font-size:11px;font-weight:700;cursor:pointer;background:var(--ivory);color:var(--muted)}
+.ch.sl{border-color:var(--brown);background:var(--brown);color:var(--white)}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+
+/* ── MODALS ── */
+.mbg{position:fixed;inset:0;background:rgba(44,36,32,.4);z-index:300;
+  display:none;align-items:flex-end;justify-content:center}
+.mbg.open{display:flex}
+.mo{background:var(--white);border-radius:20px 20px 0 0;padding:20px;
+  width:100%;max-width:460px;max-height:88vh;overflow-y:auto}
+.mt{font-family:Georgia,serif;font-size:16px;font-weight:700;margin-bottom:14px}
+.mf{display:flex;gap:8px;margin-top:12px}
+.btn{flex:1;padding:11px;border-radius:9px;border:none;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit}
+.bc{background:var(--ivory);border:1px solid var(--border);color:var(--brown)}
+.bs{background:var(--brown);color:var(--white);flex:2}
+
+/* preview */
+.prev{background:var(--brown);border-radius:10px;padding:11px;margin:8px 0;color:white}
+.pg{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;text-align:center}
+.pv{font-family:Georgia,serif;font-size:14px;font-weight:700}
+.pl{font-size:8px;color:rgba(255,255,255,.55);margin-top:2px}
+
+/* ── BOTTOM NAV ── */
+.bnav{position:fixed;bottom:0;left:0;right:0;height:60px;z-index:100;
+  background:rgba(250,247,242,.96);backdrop-filter:blur(14px);
+  border-top:1px solid var(--border);display:flex;align-items:center;
+  padding:0 8px}
+.nb{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;
+  padding:6px 2px;border:none;background:transparent;cursor:pointer;
+  border-top:2px solid transparent;color:var(--muted);transition:all .15s;font-family:inherit}
+.nb.ac{color:var(--brown);border-top-color:var(--tan)}
+.nb-i{font-size:17px;line-height:1}
+.nb-l{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:72px;left:50%;transform:translateX(-50%) translateY(10px);
+  background:var(--brown);color:var(--white);padding:9px 18px;border-radius:99px;
+  font-size:12px;font-weight:700;z-index:400;opacity:0;transition:all .25s;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── KOL CARD ── */
+.kol-card{background:var(--ivory);border-radius:10px;padding:12px;margin-bottom:8px;border:1px solid var(--border)}
+.kol-name{font-weight:700;font-size:13px}
+.kol-status{font-size:10px;color:var(--muted);margin-top:2px}
+
+/* ── CONTENT CAL ── */
+.cal-item{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--ivory)}
+.cal-date{width:36px;text-align:center;flex-shrink:0}
+.cal-day{font-size:18px;font-weight:800;line-height:1;color:var(--brown)}
+.cal-mo{font-size:9px;color:var(--muted);text-transform:uppercase}
+.cal-body{flex:1}
+.cal-title{font-size:12px;font-weight:700}
+.cal-ch{font-size:10px;color:var(--muted);margin-top:1px}
+
+@media(max-width:600px){
+  .hdr-stats{display:none}
+  .panel{width:100vw}
+  .ph-title{font-size:14px}
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="hdr">
+  <div class="logo">VALS</div>
+  <div class="hdr-stats">
+    <div class="hs"><div class="hs-v" id="hRev">—</div><div class="hs-l">Revenue</div></div>
+    <div class="hs"><div class="hs-v" id="hProfit">—</div><div class="hs-l">Profit</div></div>
+    <div class="hs"><div class="hs-v" id="hUnits">—</div><div class="hs-l">Units</div></div>
+    <div class="hs"><div class="hs-v" id="hRecov">—</div><div class="hs-l">Recovery</div></div>
+  </div>
+  <div style="display:flex;align-items:center;gap:5px">
+    <span class="live-dot"></span>
+    <span style="font-size:10px;color:var(--muted)" id="syncLbl">connecting…</span>
+  </div>
+</header>
+
+<!-- CITY -->
+<div class="city-wrap" id="cityWrap">
+  <div class="sky-bg"></div>
+
+  <!-- MAIN ISOMETRIC SCENE (flat 2.5D approach for better mobile) -->
+  <svg id="citySvg" viewBox="0 0 1000 700" xmlns="http://www.w3.org/2000/svg"
+    style="width:100%;height:100%;display:block">
+    <defs>
+      <filter id="sh"><feDropShadow dx="2" dy="5" stdDeviation="5" flood-color="#2C2420" flood-opacity=".14"/></filter>
+      <filter id="shB"><feDropShadow dx="1" dy="3" stdDeviation="3" flood-color="#2C2420" flood-opacity=".1"/></filter>
+      <radialGradient id="groundGrad" cx="50%" cy="50%" r="55%">
+        <stop offset="0%" stop-color="#D8CFBE"/>
+        <stop offset="100%" stop-color="#C4BAA8"/>
+      </radialGradient>
+      <radialGradient id="skyGrad" cx="50%" cy="30%" r="70%">
+        <stop offset="0%" stop-color="#C8E4F8"/>
+        <stop offset="60%" stop-color="#DCE8F0"/>
+        <stop offset="100%" stop-color="#E8E0D4"/>
+      </radialGradient>
+    </defs>
+
+    <!-- SKY -->
+    <rect width="1000" height="700" fill="url(#skyGrad)"/>
+
+    <!-- SUN -->
+    <circle cx="820" cy="80" r="38" fill="#FFF0C8" opacity=".9"/>
+    <circle cx="820" cy="80" r="48" fill="#FFF0C8" opacity=".3"/>
+
+    <!-- CLOUDS -->
+    <g opacity=".75">
+      <ellipse cx="140" cy="90" rx="55" ry="18" fill="white"/>
+      <ellipse cx="120" cy="84" rx="28" ry="22" fill="white"/>
+      <ellipse cx="158" cy="80" rx="22" ry="18" fill="white"/>
+    </g>
+    <g opacity=".6">
+      <ellipse cx="580" cy="60" rx="45" ry="14" fill="white"/>
+      <ellipse cx="562" cy="55" rx="22" ry="17" fill="white"/>
+      <ellipse cx="598" cy="53" rx="18" ry="14" fill="white"/>
+    </g>
+    <g opacity=".5">
+      <ellipse cx="880" cy="130" rx="38" ry="12" fill="white"/>
+      <ellipse cx="865" cy="125" rx="18" ry="14" fill="white"/>
+      <ellipse cx="895" cy="123" rx="15" ry="12" fill="white"/>
+    </g>
+
+    <!-- GROUND PLANE (isometric parallelogram) -->
+    <polygon points="500,140 920,360 500,580 80,360" fill="url(#groundGrad)"/>
+
+    <!-- GRASS areas -->
+    <polygon points="500,140 700,240 600,280 400,180" fill="#C8D4B0" opacity=".7"/>
+    <polygon points="500,580 350,500 420,460 570,540" fill="#C4D0AC" opacity=".6"/>
+    <polygon points="920,360 800,420 750,380 870,320" fill="#C8D4B0" opacity=".5"/>
+    <polygon points="80,360 200,300 250,340 130,400" fill="#C4D0AC" opacity=".5"/>
+
+    <!-- PATHS (isometric roads) -->
+    <!-- main vertical -->
+    <polygon points="480,220 520,220 560,480 440,480" fill="#C8BEB0" opacity=".9"/>
+    <!-- horizontal crossroad -->
+    <polygon points="200,345 800,345 810,375 190,375" fill="#C8BEB0" opacity=".8"/>
+    <!-- diagonal path top-right -->
+    <polygon points="520,220 560,200 660,250 620,270" fill="#C8BEB0" opacity=".7"/>
+    <!-- diagonal path top-left -->
+    <polygon points="480,220 440,200 340,250 380,270" fill="#C8BEB0" opacity=".7"/>
+    <!-- path marks -->
+    <line x1="500" y1="230" x2="500" y2="475" stroke="#B8B0A0" stroke-width="1.5" stroke-dasharray="8,10" opacity=".5"/>
+
+    <!-- ══ TREES ══ -->
+    <!-- cluster top-left -->
+    <g filter="url(#shB)">
+      <polygon points="200,195 210,220 190,220" fill="#8B7040"/>
+      <polygon points="192,205 218,205 210,185 200,178" fill="#6A8848"/>
+      <polygon points="196,195 214,195 206,176" fill="#7A9A55"/>
+    </g>
+    <g filter="url(#shB)" transform="translate(22,8)">
+      <polygon points="200,195 208,215 192,215" fill="#8B7040"/>
+      <polygon points="194,207 214,207 208,190 200,183" fill="#6A8848"/>
+      <polygon points="197,198 211,198 204,179" fill="#7A9A55"/>
+    </g>
+    <g filter="url(#shB)" transform="translate(-18,14)">
+      <polygon points="200,195 207,212 193,212" fill="#8B7040"/>
+      <polygon points="195,206 211,206 206,191 200,185" fill="#6A8848"/>
+      <polygon points="197,198 209,198 203,181" fill="#7A9A55"/>
+    </g>
+
+    <!-- cluster top-right -->
+    <g filter="url(#shB)">
+      <polygon points="740,190 750,215 730,215" fill="#8B7040"/>
+      <polygon points="732,202 758,202 750,182 740,175" fill="#6A8848"/>
+      <polygon points="736,192 754,192 746,173" fill="#7A9A55"/>
+    </g>
+    <g filter="url(#shB)" transform="translate(20,10)">
+      <polygon points="740,190 748,212 732,212" fill="#8B7040"/>
+      <polygon points="734,203 754,203 748,186 740,180" fill="#6A8848"/>
+      <polygon points="737,195 751,195 744,177" fill="#7A9A55"/>
+    </g>
+
+    <!-- cluster bottom -->
+    <g filter="url(#shB)">
+      <polygon points="380,510 388,530 372,530" fill="#8B7040"/>
+      <polygon points="374,520 398,520 392,503 380,497" fill="#6A8848"/>
+      <polygon points="377,512 393,512 386,494" fill="#7A9A55"/>
+    </g>
+    <g filter="url(#shB)" transform="translate(15,5)">
+      <polygon points="620,505 628,524 612,524" fill="#8B7040"/>
+      <polygon points="614,515 638,515 632,499 620,493" fill="#6A8848"/>
+      <polygon points="617,507 633,507 626,490" fill="#7A9A55"/>
+    </g>
+
+    <!-- flowers / bushes -->
+    <circle cx="310" cy="350" r="8" fill="#E8C4B8" opacity=".7"/>
+    <circle cx="320" cy="344" r="6" fill="#DDB8A8" opacity=".6"/>
+    <circle cx="690" cy="355" r="8" fill="#C8D8A8" opacity=".7"/>
+    <circle cx="700" cy="348" r="6" fill="#B8C898" opacity=".6"/>
+
+    <!-- ══ BUILDING: VALS HQ / OVERVIEW — center back ══ -->
+    <g id="bldHQ" class="bld" data-p="overview" style="cursor:pointer" filter="url(#sh)">
+      <!-- base -->
+      <polygon points="420,170 500,130 580,170 580,260 500,300 420,260" fill="#E8DDD0"/>
+      <!-- top face -->
+      <polygon points="420,170 500,130 580,170 500,210" fill="#F0E8DC"/>
+      <!-- left face -->
+      <polygon points="420,170 500,210 500,300 420,260" fill="#C8BEB0"/>
+      <!-- right face -->
+      <polygon points="580,170 500,210 500,300 580,260" fill="#D8CEC0"/>
+      <!-- roof peak -->
+      <polygon points="420,170 500,130 580,170 500,145" fill="#DDD4C8"/>
+      <!-- VALS sign -->
+      <rect x="462" y="148" width="76" height="20" rx="4" fill="#C9A882"/>
+      <text x="500" y="163" text-anchor="middle" font-size="11" font-weight="700" fill="white" font-family="Georgia,serif" letter-spacing="3">VALS</text>
+      <!-- windows -->
+      <rect x="435" y="185" width="14" height="10" rx="2" fill="#B8D4E8" opacity=".85"/>
+      <rect x="455" y="185" width="14" height="10" rx="2" fill="#B8D4E8" opacity=".85"/>
+      <rect x="435" y="203" width="14" height="10" rx="2" fill="#B8D4E8" opacity=".85"/>
+      <rect x="455" y="203" width="14" height="10" rx="2" fill="#B8D4E8" opacity=".85"/>
+      <rect x="511" y="185" width="14" height="10" rx="2" fill="#B8D4E8" opacity=".85"/>
+      <rect x="531" y="185" width="14" height="10" rx="2" fill="#B8D4E8" opacity=".85"/>
+      <rect x="511" y="203" width="14" height="10" rx="2" fill="#B8D4E8" opacity=".85"/>
+      <rect x="531" y="203" width="14" height="10" rx="2" fill="#B8D4E8" opacity=".85"/>
+      <!-- door -->
+      <rect x="484" y="268" width="32" height="32" rx="4" fill="#9A7A5A"/>
+      <circle cx="500" cy="284" r="2.5" fill="#C9A882"/>
+      <!-- flag -->
+      <line x1="500" y1="130" x2="500" y2="102" stroke="#8B6A4A" stroke-width="2"/>
+      <polygon points="500,102 522,109 500,116" fill="#C9A882"/>
+      <!-- hover label -->
+      <text x="500" y="94" text-anchor="middle" font-size="10" font-weight="700" fill="var(--brown)" font-family="Inter,sans-serif" opacity="0" class="blbl">ภาพรวม</text>
+    </g>
+
+    <!-- ══ BUILDING: SALES — left ══ -->
+    <g id="bldSales" class="bld" data-p="sales" style="cursor:pointer" filter="url(#sh)">
+      <polygon points="230,290 310,250 390,290 390,370 310,410 230,370" fill="#E0D4C4"/>
+      <polygon points="230,290 310,250 390,290 310,330" fill="#EDE4D4"/>
+      <polygon points="230,290 310,330 310,410 230,370" fill="#C4B8A8"/>
+      <polygon points="390,290 310,330 310,410 390,370" fill="#D4C8B8"/>
+      <!-- shop window -->
+      <rect x="240" y="305" width="36" height="28" rx="3" fill="#B8D4E8" opacity=".7"/>
+      <line x1="258" y1="305" x2="258" y2="333" stroke="#90B0C8" stroke-width="1"/>
+      <line x1="240" y1="319" x2="276" y2="319" stroke="#90B0C8" stroke-width="1"/>
+      <rect x="320" y="305" width="36" height="28" rx="3" fill="#B8D4E8" opacity=".7"/>
+      <line x1="338" y1="305" x2="338" y2="333" stroke="#90B0C8" stroke-width="1"/>
+      <line x1="320" y1="319" x2="356" y2="319" stroke="#90B0C8" stroke-width="1"/>
+      <!-- sign -->
+      <rect x="274" y="258" width="72" height="16" rx="3" fill="#B8965A"/>
+      <text x="310" y="270" text-anchor="middle" font-size="9" font-weight="700" fill="white" font-family="Georgia,serif">SALES</text>
+      <!-- door -->
+      <rect x="293" y="377" width="34" height="33" rx="3" fill="#8B6A4A"/>
+      <text x="310" y="245" text-anchor="middle" font-size="10" font-weight="700" fill="var(--brown)" font-family="Inter,sans-serif" opacity="0" class="blbl">ยอดขาย</text>
+    </g>
+
+    <!-- ══ BUILDING: FINANCE — right ══ -->
+    <g id="bldFin" class="bld" data-p="finance" style="cursor:pointer" filter="url(#sh)">
+      <polygon points="610,280 700,240 790,280 790,380 700,420 610,380" fill="#D8D0E8"/>
+      <polygon points="610,280 700,240 790,280 700,320" fill="#E4DDF0"/>
+      <polygon points="610,280 700,320 700,420 610,380" fill="#B8B0C8"/>
+      <polygon points="790,280 700,320 700,420 790,380" fill="#C8C0D8"/>
+      <!-- windows -->
+      <rect x="622" y="295" width="12" height="9" rx="1.5" fill="#B8D4E8" opacity=".85"/>
+      <rect x="640" y="295" width="12" height="9" rx="1.5" fill="#B8D4E8" opacity=".85"/>
+      <rect x="622" y="312" width="12" height="9" rx="1.5" fill="#B8D4E8" opacity=".85"/>
+      <rect x="640" y="312" width="12" height="9" rx="1.5" fill="#B8D4E8" opacity=".85"/>
+      <rect x="622" y="329" width="12" height="9" rx="1.5" fill="#B8D4E8" opacity=".85"/>
+      <rect x="640" y="329" width="12" height="9" rx="1.5" fill="#B8D4E8" opacity=".85"/>
+      <rect x="716" y="295" width="12" height="9" rx="1.5" fill="#B8D4E8" opacity=".85"/>
+      <rect x="734" y="295" width="12" height="9" rx="1.5" fill="#B8D4E8" opacity=".85"/>
+      <rect x="716" y="312" width="12" height="9" rx="1.5" fill="#B8D4E8" opacity=".85"/>
+      <rect x="734" y="312" width="12" height="9" rx="1.5" fill="#B8D4E8" opacity=".85"/>
+      <rect x="716" y="329" width="12" height="9" rx="1.5" fill="#B8D4E8" opacity=".85"/>
+      <rect x="734" y="329" width="12" height="9" rx="1.5" fill="#B8D4E8" opacity=".85"/>
+      <!-- sign -->
+      <rect x="660" y="248" width="80" height="16" rx="3" fill="#7A70A0"/>
+      <text x="700" y="260" text-anchor="middle" font-size="9" font-weight="700" fill="white" font-family="Georgia,serif">FINANCE</text>
+      <!-- door -->
+      <rect x="682" y="388" width="36" height="32" rx="3" fill="#7A6088"/>
+      <text x="700" y="234" text-anchor="middle" font-size="10" font-weight="700" fill="var(--brown)" font-family="Inter,sans-serif" opacity="0" class="blbl">การเงิน</text>
+    </g>
+
+    <!-- ══ BUILDING: STOCK — bottom-right ══ -->
+    <g id="bldStock" class="bld" data-p="stock" style="cursor:pointer" filter="url(#sh)">
+      <polygon points="630,400 730,360 830,400 830,470 730,510 630,470" fill="#C8DCC8"/>
+      <polygon points="630,400 730,360 830,400 730,440" fill="#D4E8D4"/>
+      <polygon points="630,400 730,440 730,510 630,470" fill="#A8C0A8"/>
+      <polygon points="830,400 730,440 730,510 830,470" fill="#B8D0B8"/>
+      <!-- roller door -->
+      <rect x="642" y="415" width="40" height="38" rx="2" fill="#7A9A7A"/>
+      <line x1="642" y1="422" x2="682" y2="422" stroke="#6A8A6A" stroke-width=".8"/>
+      <line x1="642" y1="428" x2="682" y2="428" stroke="#6A8A6A" stroke-width=".8"/>
+      <line x1="642" y1="434" x2="682" y2="434" stroke="#6A8A6A" stroke-width=".8"/>
+      <line x1="642" y1="440" x2="682" y2="440" stroke="#6A8A6A" stroke-width=".8"/>
+      <!-- boxes on right side -->
+      <rect x="742" y="458" width="20" height="16" rx="2" fill="#D4B880" opacity=".9"/>
+      <rect x="764" y="462" width="18" height="14" rx="2" fill="#C4A870" opacity=".9"/>
+      <rect x="742" y="442" width="18" height="14" rx="2" fill="#D4B880" opacity=".8"/>
+      <!-- sign -->
+      <rect x="694" y="366" width="72" height="14" rx="3" fill="#5A8A6A"/>
+      <text x="730" y="377" text-anchor="middle" font-size="9" font-weight="700" fill="white" font-family="Georgia,serif">STOCK</text>
+      <text x="730" y="352" text-anchor="middle" font-size="10" font-weight="700" fill="var(--brown)" font-family="Inter,sans-serif" opacity="0" class="blbl">สต็อก</text>
+    </g>
+
+    <!-- ══ BUILDING: MARKETING — top-right ══ -->
+    <g id="bldMkt" class="bld" data-p="marketing" style="cursor:pointer" filter="url(#sh)">
+      <polygon points="630,170 720,130 810,170 810,270 720,310 630,270" fill="#F0E0D0"/>
+      <polygon points="630,170 720,130 810,170 720,210" fill="#F8ECD8"/>
+      <polygon points="630,170 720,210 720,310 630,270" fill="#D4C0A8"/>
+      <polygon points="810,170 720,210 720,310 810,270" fill="#E4D0B8"/>
+      <!-- big studio windows -->
+      <rect x="642" y="195" width="36" height="50" rx="3" fill="#B8D4E8" opacity=".6"/>
+      <rect x="732" y="195" width="36" height="50" rx="3" fill="#B8D4E8" opacity=".6"/>
+      <!-- antenna -->
+      <line x1="720" y1="130" x2="720" y2="100" stroke="#C9A882" stroke-width="2"/>
+      <circle cx="720" cy="97" r="5" fill="none" stroke="#C9A882" stroke-width="1.5"/>
+      <circle cx="720" cy="97" r="9" fill="none" stroke="#C9A882" stroke-width="1" opacity=".5"/>
+      <circle cx="720" cy="97" r="13" fill="none" stroke="#C9A882" stroke-width=".7" opacity=".3"/>
+      <!-- sign -->
+      <rect x="678" y="138" width="84" height="14" rx="3" fill="#D09060"/>
+      <text x="720" y="149" text-anchor="middle" font-size="8" font-weight="700" fill="white" font-family="Georgia,serif">MARKETING</text>
+      <!-- door -->
+      <rect x="703" y="278" width="34" height="32" rx="3" fill="#8B6040"/>
+      <text x="720" y="120" text-anchor="middle" font-size="10" font-weight="700" fill="var(--brown)" font-family="Inter,sans-serif" opacity="0" class="blbl">การตลาด</text>
+    </g>
+
+    <!-- ══ BUILDING: WORKSHOP — bottom-left ══ -->
+    <g id="bldWS" class="bld" data-p="events" style="cursor:pointer" filter="url(#sh)">
+      <polygon points="170,395 270,355 370,395 370,475 270,515 170,475" fill="#F0E8D8"/>
+      <!-- tent roof -->
+      <polygon points="170,395 270,340 370,395 270,435" fill="#E8D8C0"/>
+      <polygon points="170,395 270,435 270,515 170,475" fill="#D4C4A8"/>
+      <polygon points="370,395 270,435 270,515 370,475" fill="#E4D4B8"/>
+      <!-- bunting -->
+      <path d="M200,380 Q240,365 270,375 Q300,365 340,380" fill="none" stroke="#C9A882" stroke-width="1.5" stroke-dasharray="3,4"/>
+      <polygon points="210,373 215,367 220,373" fill="#E8A870"/>
+      <polygon points="240,367 245,361 250,367" fill="#C9A882"/>
+      <polygon points="268,372 273,366 278,372" fill="#A8C080"/>
+      <polygon points="298,367 303,361 308,367" fill="#D0A8C0"/>
+      <!-- windows -->
+      <rect x="182" y="415" width="30" height="22" rx="2" fill="#B8D4E8" opacity=".7"/>
+      <rect x="220" y="415" width="30" height="22" rx="2" fill="#B8D4E8" opacity=".7"/>
+      <!-- door -->
+      <rect x="252" y="480" width="36" height="35" rx="3" fill="#9A7040"/>
+      <text x="270" y="326" text-anchor="middle" font-size="10" font-weight="700" fill="var(--brown)" font-family="Inter,sans-serif" opacity="0" class="blbl">Workshop</text>
+    </g>
+
+    <!-- ══ BUILDING: KOL/CREATOR — top-left ══ -->
+    <g id="bldKOL" class="bld" data-p="kol" style="cursor:pointer" filter="url(#sh)">
+      <polygon points="190,200 275,162 360,200 360,285 275,323 190,285" fill="#F0D8E8"/>
+      <polygon points="190,200 275,162 360,200 275,240" fill="#F8E4F0"/>
+      <polygon points="190,200 275,240 275,323 190,285" fill="#D4B8C8"/>
+      <polygon points="360,200 275,240 275,323 360,285" fill="#E4C8D8"/>
+      <!-- star/camera decorations -->
+      <text x="235" y="225" font-size="14" opacity=".6">📸</text>
+      <text x="298" y="220" font-size="12" opacity=".5">✦</text>
+      <!-- sign -->
+      <rect x="235" y="170" width="80" height="14" rx="3" fill="#B870A0"/>
+      <text x="275" y="181" text-anchor="middle" font-size="8" font-weight="700" fill="white" font-family="Georgia,serif">KOL / CREATOR</text>
+      <!-- door -->
+      <rect x="257" y="290" width="36" height="33" rx="3" fill="#906070"/>
+      <text x="275" y="152" text-anchor="middle" font-size="10" font-weight="700" fill="var(--brown)" font-family="Inter,sans-serif" opacity="0" class="blbl">KOL</text>
+    </g>
+
+    <!-- ══ BUILDING: CONTENT — center right ══ -->
+    <g id="bldContent" class="bld" data-p="content" style="cursor:pointer" filter="url(#sh)">
+      <polygon points="560,320 640,285 720,320 720,400 640,435 560,400" fill="#E8F0D8"/>
+      <polygon points="560,320 640,285 720,320 640,360" fill="#F0F8E0"/>
+      <polygon points="560,320 640,360 640,435 560,400" fill="#C8D4B0"/>
+      <polygon points="720,320 640,360 640,435 720,400" fill="#D8E4C0"/>
+      <!-- calendar grid on wall -->
+      <rect x="572" y="340" width="28" height="22" rx="2" fill="white" opacity=".6"/>
+      <line x1="572" y1="347" x2="600" y2="347" stroke="#C0D0A0" stroke-width=".8"/>
+      <line x1="572" y1="352" x2="600" y2="352" stroke="#C0D0A0" stroke-width=".8"/>
+      <line x1="572" y1="357" x2="600" y2="357" stroke="#C0D0A0" stroke-width=".8"/>
+      <line x1="581" y1="340" x2="581" y2="362" stroke="#C0D0A0" stroke-width=".8"/>
+      <line x1="590" y1="340" x2="590" y2="362" stroke="#C0D0A0" stroke-width=".8"/>
+      <!-- sign -->
+      <rect x="604" y="292" width="72" height="14" rx="3" fill="#7A9050"/>
+      <text x="640" y="303" text-anchor="middle" font-size="8" font-weight="700" fill="white" font-family="Georgia,serif">CONTENT</text>
+      <!-- door -->
+      <rect x="622" y="403" width="36" height="32" rx="3" fill="#607040"/>
+      <text x="640" y="276" text-anchor="middle" font-size="10" font-weight="700" fill="var(--brown)" font-family="Inter,sans-serif" opacity="0" class="blbl">Content</text>
+    </g>
+
+    <!-- ══ INVOICE KIOSK — small station ══ -->
+    <g id="bldInv" class="bld" data-p="invoice" style="cursor:pointer" filter="url(#shB)">
+      <polygon points="420,430 475,405 530,430 530,480 475,505 420,480" fill="#E8E0C8"/>
+      <polygon points="420,430 475,405 530,430 475,455" fill="#F0E8D0"/>
+      <polygon points="420,430 475,455 475,505 420,480" fill="#C8C0A8"/>
+      <polygon points="530,430 475,455 475,505 530,480" fill="#D8D0B8"/>
+      <!-- mailbox/window -->
+      <rect x="432" y="448" width="22" height="18" rx="2" fill="#B8D4E8" opacity=".7"/>
+      <!-- sign -->
+      <rect x="449" y="413" width="52" height="12" rx="2" fill="#A08840"/>
+      <text x="475" y="422" text-anchor="middle" font-size="7" font-weight="700" fill="white" font-family="Georgia,serif">INVOICE</text>
+      <text x="475" y="396" text-anchor="middle" font-size="9" font-weight="700" fill="var(--brown)" font-family="Inter,sans-serif" opacity="0" class="blbl">ใบวางบิล</text>
+    </g>
+
+    <!-- ══ CHARACTERS (chibi animals) ══ -->
+
+    <!-- CAT — HQ Strategy, walks around center -->
+    <g id="charCat">
+      <animateMotion dur="12s" repeatCount="indefinite"
+        path="M500,340 C520,330 540,340 520,355 C500,368 480,358 490,345 C500,332 515,330 500,340"/>
+      <!-- shadow -->
+      <ellipse cx="0" cy="18" rx="10" ry="4" fill="rgba(0,0,0,.12)"/>
+      <!-- body -->
+      <polygon points="-9,5 9,5 11,18 -11,18" fill="#E8DECE"/>
+      <!-- head -->
+      <polygon points="-10,-8 10,-8 12,5 -12,5" fill="#E8DECE"/>
+      <!-- ears -->
+      <polygon points="-10,-8 -6,-15 -2,-8" fill="#E8DECE"/>
+      <polygon points="2,-8 6,-15 10,-8" fill="#E8DECE"/>
+      <polygon points="-8,-8 -6,-13 -4,-8" fill="#F8C0C0" opacity=".5"/>
+      <polygon points="4,-8 6,-13 8,-8" fill="#F8C0C0" opacity=".5"/>
+      <!-- face -->
+      <circle cx="-4" cy="-1" r="1.8" fill="#3A3030"/>
+      <circle cx="4" cy="-1" r="1.8" fill="#3A3030"/>
+      <circle cx="-3.5" cy="-1.5" r=".5" fill="white"/>
+      <circle cx="4.5" cy="-1.5" r=".5" fill="white"/>
+      <line x1="-3" y1="2" x2="3" y2="2" stroke="#C09090" stroke-width=".8"/>
+      <!-- glasses -->
+      <rect x="-8" y="-3" width="5" height="4" rx="1.5" fill="none" stroke="#C05050" stroke-width=".8"/>
+      <rect x="3" y="-3" width="5" height="4" rx="1.5" fill="none" stroke="#C05050" stroke-width=".8"/>
+      <line x1="-3" y1="-1" x2="3" y2="-1" stroke="#C05050" stroke-width=".7"/>
+      <!-- laptop -->
+      <rect x="-7" y="6" width="14" height="9" rx="1" fill="#9AACB8"/>
+      <rect x="-7" y="14" width="14" height="2" rx="1" fill="#7A8C98"/>
+      <!-- task label -->
+      <rect x="-28" y="-25" width="56" height="14" rx="3" fill="white" opacity=".9" filter="url(#shB)"/>
+      <text x="0" y="-14" text-anchor="middle" font-size="7" fill="#2C2420" font-family="Inter,sans-serif" font-weight="700" id="catTask">วางแผนกลยุทธ์</text>
+    </g>
+
+    <!-- FROG — Marketing, walks wider loop with boba -->
+    <g id="charFrog">
+      <animateMotion dur="16s" repeatCount="indefinite"
+        path="M680,340 C700,320 720,330 710,355 C698,375 670,370 660,350 C650,330 665,320 680,340"/>
+      <ellipse cx="0" cy="18" rx="10" ry="4" fill="rgba(0,0,0,.1)"/>
+      <polygon points="-9,5 9,5 11,18 -11,18" fill="#90C888"/>
+      <polygon points="-10,-8 10,-8 12,5 -12,5" fill="#90C888"/>
+      <polygon points="-10,-8 -5,-14 0,-8" fill="#90C888"/>
+      <polygon points="0,-8 5,-14 10,-8" fill="#90C888"/>
+      <circle cx="-4" cy="-1" r="2" fill="#3A3030"/>
+      <circle cx="4" cy="-1" r="2" fill="#3A3030"/>
+      <circle cx="-3.5" cy="-1.5" r=".6" fill="white"/>
+      <circle cx="4.5" cy="-1.5" r=".6" fill="white"/>
+      <!-- headphones -->
+      <path d="M-10,-6 Q-10,-14 0,-14 Q10,-14 10,-6" fill="none" stroke="#8090B0" stroke-width="2.5"/>
+      <rect x="-12" y="-9" width="5" height="7" rx="2" fill="#8090B0"/>
+      <rect x="7" y="-9" width="5" height="7" rx="2" fill="#8090B0"/>
+      <!-- boba cup -->
+      <rect x="8" y="4" width="8" height="12" rx="2" fill="#F0EAE0"/>
+      <rect x="8" y="4" width="8" height="4" rx="1" fill="#E8D4A8" opacity=".6"/>
+      <line x1="12" y1="4" x2="12" y2="-2" stroke="#7A6050" stroke-width="1"/>
+      <!-- task -->
+      <rect x="-30" y="-26" width="60" height="14" rx="3" fill="white" opacity=".9" filter="url(#shB)"/>
+      <text x="0" y="-15" text-anchor="middle" font-size="7" fill="#2C2420" font-family="Inter,sans-serif" font-weight="700" id="frogTask">ยิงโฆษณา IG</text>
+    </g>
+
+    <!-- BEAR — Finance, stays near finance building -->
+    <g id="charBear">
+      <animateMotion dur="10s" repeatCount="indefinite"
+        path="M700,370 C714,360 722,368 715,380 C706,392 692,388 690,376 C688,362 698,358 700,370"/>
+      <ellipse cx="0" cy="20" rx="11" ry="4" fill="rgba(0,0,0,.1)"/>
+      <polygon points="-10,5 10,5 12,20 -12,20" fill="#D0B890"/>
+      <polygon points="-11,-9 11,-9 13,5 -13,5" fill="#D0B890"/>
+      <circle cx="-9" cy="-10" r="5" fill="#D0B890"/>
+      <circle cx="9" cy="-10" r="5" fill="#D0B890"/>
+      <circle cx="-9" cy="-10" r="3" fill="#C0A880"/>
+      <circle cx="9" cy="-10" r="3" fill="#C0A880"/>
+      <circle cx="-4" cy="-2" r="1.8" fill="#3A3030"/>
+      <circle cx="4" cy="-2" r="1.8" fill="#3A3030"/>
+      <circle cx="-3.5" cy="-2.5" r=".5" fill="white"/>
+      <circle cx="4.5" cy="-2.5" r=".5" fill="white"/>
+      <ellipse cx="0" cy="1" rx="3" ry="2" fill="#C0A880"/>
+      <!-- coffee cup -->
+      <rect x="-7" y="7" width="10" height="10" rx="2" fill="#E8D8C0"/>
+      <path d="M3,10 Q7,10 7,14 Q7,17 3,17" fill="none" stroke="#D0B880" stroke-width="1.2"/>
+      <rect x="-5" y="7" width="6" height="3" rx="1" fill="#C09060" opacity=".5"/>
+      <!-- task -->
+      <rect x="-28" y="-28" width="56" height="14" rx="3" fill="white" opacity=".9" filter="url(#shB)"/>
+      <text x="0" y="-17" text-anchor="middle" font-size="7" fill="#2C2420" font-family="Inter,sans-serif" font-weight="700" id="bearTask">สรุปรายจ่าย</text>
+    </g>
+
+    <!-- RABBIT — Stock/Inventory, carries box -->
+    <g id="charRabbit">
+      <animateMotion dur="14s" repeatCount="indefinite"
+        path="M730,435 C745,425 755,435 748,450 C740,462 720,458 718,445 C715,430 728,425 730,435"/>
+      <ellipse cx="0" cy="20" rx="10" ry="4" fill="rgba(0,0,0,.1)"/>
+      <polygon points="-9,5 9,5 10,20 -10,20" fill="#F0E4D8"/>
+      <polygon points="-10,-9 10,-9 11,5 -11,5" fill="#F0E4D8"/>
+      <!-- long ears -->
+      <polygon points="-6,-9 -4,-22 -1,-9" fill="#F0E4D8"/>
+      <polygon points="1,-9 4,-22 6,-9" fill="#F0E4D8"/>
+      <polygon points="-5,-9 -4,-19 -2,-9" fill="#F8C8C8" opacity=".5"/>
+      <polygon points="2,-9 4,-19 5,-9" fill="#F8C8C8" opacity=".5"/>
+      <circle cx="-3" cy="-2" r="1.8" fill="#3A3030"/>
+      <circle cx="3" cy="-2" r="1.8" fill="#3A3030"/>
+      <circle cx="-2.5" cy="-2.5" r=".5" fill="white"/>
+      <circle cx="3.5" cy="-2.5" r=".5" fill="white"/>
+      <!-- box -->
+      <rect x="-8" y="5" width="16" height="13" rx="2" fill="#D4B880"/>
+      <line x1="-8" y1="10" x2="8" y2="10" stroke="#C4A870" stroke-width=".8"/>
+      <line x1="0" y1="5" x2="0" y2="18" stroke="#C4A870" stroke-width=".8"/>
+      <!-- task -->
+      <rect x="-30" y="-28" width="60" height="14" rx="3" fill="white" opacity=".9" filter="url(#shB)"/>
+      <text x="0" y="-17" text-anchor="middle" font-size="7" fill="#2C2420" font-family="Inter,sans-serif" font-weight="700" id="rabbitTask">เช็คสต็อก</text>
+    </g>
+
+    <!-- DOG — Events/Workshop -->
+    <g id="charDog">
+      <animateMotion dur="11s" repeatCount="indefinite"
+        path="M270,450 C285,438 298,448 290,462 C280,475 260,470 258,456 C256,441 268,438 270,450"/>
+      <ellipse cx="0" cy="20" rx="10" ry="4" fill="rgba(0,0,0,.1)"/>
+      <polygon points="-9,5 9,5 11,20 -11,20" fill="#D4A870"/>
+      <polygon points="-10,-9 10,-9 12,5 -12,5" fill="#D4A870"/>
+      <polygon points="-12,-8 -7,-8 -9,-2" fill="#C09860"/>
+      <polygon points="7,-8 12,-8 9,-2" fill="#C09860"/>
+      <circle cx="-4" cy="-2" r="1.8" fill="#3A3030"/>
+      <circle cx="4" cy="-2" r="1.8" fill="#3A3030"/>
+      <circle cx="-3.5" cy="-2.5" r=".5" fill="white"/>
+      <circle cx="4.5" cy="-2.5" r=".5" fill="white"/>
+      <!-- clipboard -->
+      <rect x="-7" y="4" width="12" height="14" rx="1.5" fill="#F0E4CC"/>
+      <rect x="-6" y="3" width="10" height="3" rx="1" fill="#C0A888"/>
+      <line x1="-5" y1="8" x2="4" y2="8" stroke="#C0B098" stroke-width=".7"/>
+      <line x1="-5" y1="11" x2="4" y2="11" stroke="#C0B098" stroke-width=".7"/>
+      <line x1="-5" y1="14" x2="4" y2="14" stroke="#C0B098" stroke-width=".7"/>
+      <!-- task -->
+      <rect x="-32" y="-26" width="64" height="14" rx="3" fill="white" opacity=".9" filter="url(#shB)"/>
+      <text x="0" y="-15" text-anchor="middle" font-size="7" fill="#2C2420" font-family="Inter,sans-serif" font-weight="700" id="dogTask">จัด Workshop</text>
+    </g>
+
+    <!-- DUCK — Content/KOL with camera -->
+    <g id="charDuck">
+      <animateMotion dur="13s" repeatCount="indefinite"
+        path="M290,250 C308,238 320,248 312,264 C302,278 278,272 276,258 C274,242 285,238 290,250"/>
+      <ellipse cx="0" cy="18" rx="10" ry="4" fill="rgba(0,0,0,.1)"/>
+      <polygon points="-9,5 9,5 10,18 -10,18" fill="#F0D860"/>
+      <polygon points="-10,-8 10,-8 11,5 -11,5" fill="#F0D860"/>
+      <polygon points="-14,-5 -8,-5 -9,0" fill="#F09040"/>
+      <circle cx="4" cy="-2" r="2" fill="#3A3030"/>
+      <circle cx="4.5" cy="-2.5" r=".6" fill="white"/>
+      <!-- camera -->
+      <rect x="-8" y="3" width="12" height="9" rx="1.5" fill="#4A5A6A"/>
+      <circle cx="-2" cy="7" r="3" fill="#3A4A5A"/>
+      <circle cx="-2" cy="7" r="1.5" fill="#2A3A4A"/>
+      <rect x="4" y="5" width="3" height="2" rx=".5" fill="#5A6A7A"/>
+      <!-- task -->
+      <rect x="-32" y="-24" width="64" height="14" rx="3" fill="white" opacity=".9" filter="url(#shB)"/>
+      <text x="0" y="-13" text-anchor="middle" font-size="7" fill="#2C2420" font-family="Inter,sans-serif" font-weight="700" id="duckTask">ถ่าย content</text>
+    </g>
+
+    <!-- building click highlight rings (invisible by default) -->
+    <ellipse id="hlHQ" cx="500" cy="295" rx="80" ry="30" fill="none" stroke="var(--tan)" stroke-width="2" opacity="0" stroke-dasharray="6,4"/>
+    <ellipse id="hlSales" cx="310" cy="405" rx="75" ry="25" fill="none" stroke="var(--tan)" stroke-width="2" opacity="0" stroke-dasharray="6,4"/>
+    <ellipse id="hlFin" cx="700" cy="415" rx="75" ry="25" fill="none" stroke="#8070A0" stroke-width="2" opacity="0" stroke-dasharray="6,4"/>
+    <ellipse id="hlStock" cx="730" cy="505" rx="75" ry="25" fill="none" stroke="#5A8A6A" stroke-width="2" opacity="0" stroke-dasharray="6,4"/>
+    <ellipse id="hlMkt" cx="720" cy="305" rx="75" ry="25" fill="none" stroke="#D09060" stroke-width="2" opacity="0" stroke-dasharray="6,4"/>
+    <ellipse id="hlWS" cx="270" cy="510" rx="75" ry="25" fill="none" stroke="#A08040" stroke-width="2" opacity="0" stroke-dasharray="6,4"/>
+    <ellipse id="hlKOL" cx="275" cy="318" rx="75" ry="25" fill="none" stroke="#B870A0" stroke-width="2" opacity="0" stroke-dasharray="6,4"/>
+    <ellipse id="hlContent" cx="640" cy="430" rx="65" ry="22" fill="none" stroke="#7A9050" stroke-width="2" opacity="0" stroke-dasharray="6,4"/>
+    <ellipse id="hlInv" cx="475" cy="500" rx="55" ry="18" fill="none" stroke="#A08840" stroke-width="2" opacity="0" stroke-dasharray="6,4"/>
+  </svg>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="bnav">
+  <button class="nb ac" data-p="overview" onclick="openPanel('overview',this)">
+    <span class="nb-i">🏛</span><span class="nb-l">Overview</span>
+  </button>
+  <button class="nb" data-p="sales" onclick="openPanel('sales',this)">
+    <span class="nb-i">📊</span><span class="nb-l">ยอดขาย</span>
+  </button>
+  <button class="nb" data-p="finance" onclick="openPanel('finance',this)">
+    <span class="nb-i">💰</span><span class="nb-l">การเงิน</span>
+  </button>
+  <button class="nb" data-p="stock" onclick="openPanel('stock',this)">
+    <span class="nb-i">📦</span><span class="nb-l">Stock</span>
+  </button>
+  <button class="nb" data-p="kol" onclick="openPanel('kol',this)">
+    <span class="nb-i">🌟</span><span class="nb-l">KOL</span>
+  </button>
+  <button class="nb" data-p="content" onclick="openPanel('content',this)">
+    <span class="nb-i">📅</span><span class="nb-l">Content</span>
+  </button>
+  <button class="nb" data-p="invoice" onclick="openPanel('invoice',this)">
+    <span class="nb-i">🧾</span><span class="nb-l">Invoice</span>
+  </button>
+</nav>
+
+<!-- PANEL -->
+<div class="overlay" id="overlay" onclick="closePanel()"></div>
+<div class="panel" id="panel">
+  <div class="ph">
+    <div class="ph-title"><span class="ph-emoji" id="pIco">🏛</span><span id="pTitle">Overview</span></div>
+    <button class="ph-close" onclick="closePanel()">✕</button>
+  </div>
+  <div class="pb" id="pBody"><div style="color:var(--muted);text-align:center;padding:40px">Loading…</div></div>
+</div>
+
+<!-- SALE MODAL -->
+<div class="mbg" id="saleMod">
+  <div class="mo">
+    <div class="mt" id="smTitle">บันทึกยอดขาย</div>
+    <div class="fr"><label class="fl">รุ่นสินค้า</label>
+      <div class="cr">
+        <button class="ch sl" data-v="ts" onclick="sc(this,'prod')">The Sparkling</button>
+        <button class="ch" data-v="fd_petite" onclick="sc(this,'prod')">FD Petite</button>
+        <button class="ch" data-v="fd" onclick="sc(this,'prod')">FD Standard</button>
+      </div></div>
+    <div class="fr"><label class="fl">ช่องทาง</label>
+      <div class="cr">
+        <button class="ch sl" data-v="studio_peachlates" onclick="sc(this,'chan')">Peachlates</button>
+        <button class="ch" data-v="studio_madimadi" onclick="sc(this,'chan')">Madi Madi</button>
+        <button class="ch" data-v="shopee" onclick="sc(this,'chan')">Shopee</button>
+        <button class="ch" data-v="ig_line" onclick="sc(this,'chan')">IG/Line</button>
+        <button class="ch" data-v="workshop" onclick="sc(this,'chan')">Workshop</button>
+      </div></div>
+    <div class="g3" style="margin-bottom:10px">
+      <div class="fr" style="margin:0"><label class="fl">วันที่</label><input class="fi" type="date" id="sDate"></div>
+      <div class="fr" style="margin:0"><label class="fl">จำนวน</label><input class="fi" type="number" id="sQty" value="1"></div>
+      <div class="fr" style="margin:0"><label class="fl">ราคา/คู่</label><input class="fi" type="number" id="sPrice" value="449"></div>
+    </div>
+    <div class="g3" style="margin-bottom:8px">
+      <div class="fr" style="margin:0"><label class="fl">GP %</label><input class="fi" type="number" id="sGP" value="0"></div>
+      <div class="fr" style="margin:0"><label class="fl">ค่าส่ง</label><input class="fi" type="number" id="sShip" value="0"></div>
+      <div class="fr" style="margin:0"><label class="fl">Platform</label><input class="fi" type="number" id="sPF" value="0"></div>
+    </div>
+    <div class="prev">
+      <div style="font-size:8px;color:rgba(255,255,255,.5);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">ตัวอย่างกำไร</div>
+      <div class="pg">
+        <div><div class="pv" id="prvRev">฿0</div><div class="pl">รายได้</div></div>
+        <div><div class="pv" id="prvPro">฿0</div><div class="pl">กำไร</div></div>
+        <div><div class="pv" id="prvMar">0%</div><div class="pl">Margin</div></div>
+      </div>
+    </div>
+    <div class="fr"><label class="fl">หมายเหตุ</label><input class="fi" type="text" id="sNote" placeholder="เช่น 9.9 Promo…"></div>
+    <div class="mf">
+      <button class="btn bc" onclick="closeSaleMod()">ยกเลิก</button>
+      <button class="btn bs" onclick="saveSale()">บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<!-- EXPENSE MODAL -->
+<div class="mbg" id="expMod">
+  <div class="mo">
+    <div class="mt">เพิ่มรายจ่าย</div>
+    <div class="fr"><label class="fl">หมวด</label>
+      <div class="cr">
+        <button class="ch sl" data-v="การตลาด" onclick="sc(this,'cat')">การตลาด</button>
+        <button class="ch" data-v="บรรจุภัณฑ์" onclick="sc(this,'cat')">บรรจุภัณฑ์</button>
+        <button class="ch" data-v="ขนส่ง" onclick="sc(this,'cat')">ขนส่ง</button>
+        <button class="ch" data-v="อุปกรณ์" onclick="sc(this,'cat')">อุปกรณ์</button>
+        <button class="ch" data-v="R&D" onclick="sc(this,'cat')">R&D</button>
+        <button class="ch" data-v="Workshop" onclick="sc(this,'cat')">Workshop</button>
+        <button class="ch" data-v="ต้นทุนผลิต" onclick="sc(this,'cat')">ต้นทุนผลิต</button>
+        <button class="ch" data-v="อื่นๆ" onclick="sc(this,'cat')">อื่นๆ</button>
+      </div></div>
+    <div class="fr"><label class="fl">รายละเอียด</label><input class="fi" type="text" id="eDesc" placeholder="เช่น ค่ายิง Ads IG"></div>
+    <div class="g2" style="margin-bottom:8px">
+      <div class="fr" style="margin:0"><label class="fl">จำนวนเงิน ฿</label><input class="fi" type="number" id="eAmt" placeholder="0"></div>
+      <div class="fr" style="margin:0"><label class="fl">วันที่</label><input class="fi" type="date" id="eDate"></div>
+    </div>
+    <div class="mf">
+      <button class="btn bc" onclick="closeExpMod()">ยกเลิก</button>
+      <button class="btn bs" onclick="saveExp()">บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<!-- KOL MODAL -->
+<div class="mbg" id="kolMod">
+  <div class="mo">
+    <div class="mt">เพิ่ม KOL</div>
+    <div class="g2" style="margin-bottom:8px">
+      <div class="fr" style="margin:0"><label class="fl">ชื่อ KOL</label><input class="fi" type="text" id="kName" placeholder="@username"></div>
+      <div class="fr" style="margin:0"><label class="fl">Platform</label>
+        <select class="fi" id="kPlatform">
+          <option>Instagram</option><option>TikTok</option><option>YouTube</option><option>อื่นๆ</option>
+        </select></div>
+    </div>
+    <div class="fr"><label class="fl">ของที่ส่งให้</label><input class="fi" type="text" id="kItem" placeholder="เช่น TS 1 คู่ + FD 1 คู่"></div>
+    <div class="g2" style="margin-bottom:8px">
+      <div class="fr" style="margin:0"><label class="fl">วันที่ส่ง</label><input class="fi" type="date" id="kSent"></div>
+      <div class="fr" style="margin:0"><label class="fl">Status</label>
+        <select class="fi" id="kStatus">
+          <option value="sent">ส่งแล้ว</option>
+          <option value="posted">โพสต์แล้ว</option>
+          <option value="pending">รอโพสต์</option>
+        </select></div>
+    </div>
+    <div class="fr"><label class="fl">หมายเหตุ</label><input class="fi" type="text" id="kNote" placeholder="Link โพสต์ หรือ note อื่นๆ"></div>
+    <div class="mf">
+      <button class="btn bc" onclick="closeKolMod()">ยกเลิก</button>
+      <button class="btn bs" onclick="saveKol()">บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONTENT MODAL -->
+<div class="mbg" id="contentMod">
+  <div class="mo">
+    <div class="mt">เพิ่ม Content Plan</div>
+    <div class="fr"><label class="fl">หัวข้อ</label><input class="fi" type="text" id="cTitle" placeholder="เช่น OOTD Pilates วิธีเลือกถุงเท้า"></div>
+    <div class="g2" style="margin-bottom:8px">
+      <div class="fr" style="margin:0"><label class="fl">Channel</label>
+        <select class="fi" id="cChan">
+          <option>Instagram Feed</option><option>Instagram Reels</option>
+          <option>TikTok</option><option>Line OA</option><option>อื่นๆ</option>
+        </select></div>
+      <div class="fr" style="margin:0"><label class="fl">วันที่โพสต์</label><input class="fi" type="date" id="cDate"></div>
+    </div>
+    <div class="fr"><label class="fl">Status</label>
+      <div class="cr">
+        <button class="ch sl" data-v="plan" onclick="sc(this,'cst')">แผน</button>
+        <button class="ch" data-v="shoot" onclick="sc(this,'cst')">ถ่ายแล้ว</button>
+        <button class="ch" data-v="edit" onclick="sc(this,'cst')">ตัดแล้ว</button>
+        <button class="ch" data-v="posted" onclick="sc(this,'cst')">โพสต์แล้ว</button>
+      </div></div>
+    <div class="fr"><label class="fl">หมายเหตุ</label><input class="fi" type="text" id="cNote" placeholder="Caption idea หรือ note…"></div>
+    <div class="mf">
+      <button class="btn bc" onclick="closeContentMod()">ยกเลิก</button>
+      <button class="btn bs" onclick="saveContent()">บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── CONFIG ──────────────────────────────────────────────────────
+const TOTAL_COST = 26913;
+const BANK = {number:'1148058977',bank:'KBANK',name:'Charlene Chindapol'};
+const UNIT_COST = {ts:117.84,fd_petite:79.70,fd:21.93};
+const PROD_NAMES = {ts:'The Sparkling',fd_petite:'FD Petite',fd:'FD Standard'};
+const PROD_PRICE = {ts:449,fd_petite:379,fd:379};
+const CHAN_NAMES = {studio_peachlates:'Peachlates',studio_madimadi:'Madi Madi',
+  shopee:'Shopee',ig_line:'IG/Line',workshop:'Workshop'};
+const CHAN_DEF = {
+  studio_peachlates:{gp:20,ship:0,pf:0},
+  studio_madimadi:{gp:0,ship:0,pf:0},
+  shopee:{gp:0,ship:55,pf:66},
+  ig_line:{gp:0,ship:50,pf:0},
+  workshop:{gp:0,ship:0,pf:0},
+};
+const PANELS = {
+  overview:{ico:'🏛',title:'ภาพรวม VALS'},
+  sales:{ico:'📊',title:'ยอดขาย'},
+  finance:{ico:'💰',title:'การเงิน'},
+  stock:{ico:'📦',title:'สต็อกสินค้า'},
+  marketing:{ico:'✨',title:'การตลาด'},
+  events:{ico:'🎪',title:'Workshop & Events'},
+  kol:{ico:'🌟',title:'KOL / Creator'},
+  content:{ico:'📅',title:'Content Calendar'},
+  invoice:{ico:'🧾',title:'ใบสรุปยอด'},
+};
+
+// ── STATE ─────────────────────────────────────────────────────────
+let db=null, sales=[], expenses=[], kols=[], contents=[];
+let curPanel='', selProd='ts', selChan='studio_peachlates', selCat='การตลาด';
+let selCst='plan', editSaleId=null;
+
+// ── HELPERS ───────────────────────────────────────────────────────
+const f2 = n=>Number(n).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
+const f0 = n=>Number(n).toLocaleString('th-TH',{maximumFractionDigits:0});
+const f1 = n=>Number(n).toLocaleString('th-TH',{minimumFractionDigits:1,maximumFractionDigits:1});
+
+function calcSale(s){
+  const u=UNIT_COST[s.product]||0;
+  const gross=s.sale_price*s.qty;
+  const gp=gross*(s.gp_pct/100);
+  const net=gross-gp;
+  const cost=(u*s.qty)+(+s.shipping||0)+(+s.platform_fee||0);
+  const profit=net-cost;
+  const margin=net>0?profit/net*100:0;
+  return{gross,gp,net,cost,profit,margin};
+}
+
+function toast(msg,ok=true){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.style.background=ok?'var(--brown)':'var(--red)';
+  t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+// ── DB INIT ───────────────────────────────────────────────────────
+async function init(){
+  try{
+    db=await claude.use('db');
+    if(!db){fallback();return;}
+    db.collection('sales').onSnapshot(snap=>{sales=snap.docs.map(d=>d.data());refresh();});
+    db.collection('expenses').onSnapshot(snap=>{expenses=snap.docs.map(d=>d.data());refresh();});
+    db.collection('kols').onSnapshot(snap=>{kols=snap.docs.map(d=>d.data());refresh();});
+    db.collection('contents').onSnapshot(snap=>{contents=snap.docs.map(d=>d.data());refresh();});
+    document.getElementById('syncLbl').textContent='Live ✓';
+  }catch(e){fallback();}
+}
+function fallback(){document.getElementById('syncLbl').textContent='Offline';refresh();}
+
+// ── METRICS ───────────────────────────────────────────────────────
+function metrics(){
+  const rev=sales.reduce((s,o)=>s+calcSale(o).net,0);
+  const profit=sales.reduce((s,o)=>s+calcSale(o).profit,0);
+  const units=sales.reduce((s,o)=>s+(+o.qty),0);
+  const exp=expenses.reduce((s,e)=>s+(+e.amount),0);
+  const recov=Math.min(rev/TOTAL_COST*100,100);
+  const margin=rev>0?profit/rev*100:0;
+  return{rev,profit,units,exp,recov,margin};
+}
+
+function refresh(){
+  const m=metrics();
+  document.getElementById('hRev').textContent='฿'+f0(m.rev);
+  document.getElementById('hProfit').textContent=(m.profit<0?'-':'')+'฿'+f0(Math.abs(m.profit));
+  document.getElementById('hProfit').style.color=m.profit>=0?'var(--green)':'var(--red)';
+  document.getElementById('hUnits').textContent=m.units+' คู่';
+  document.getElementById('hRecov').textContent=f1(m.recov)+'%';
+  // update character tasks dynamically
+  updateCharTasks();
+  if(curPanel) renderPanel(curPanel);
+}
+
+function updateCharTasks(){
+  // cat: latest strategic note
+  const latestSale=sales.sort((a,b)=>b.date.localeCompare(a.date))[0];
+  if(latestSale) document.getElementById('catTask').textContent='ล่าสุด: '+latestSale.date.slice(5);
+  // frog: total mkt spend
+  const mktSpend=expenses.filter(e=>e.category==='การตลาด').reduce((s,e)=>s+(+e.amount),0);
+  if(mktSpend) document.getElementById('frogTask').textContent='Ads ฿'+f0(mktSpend);
+  // bear: total expenses
+  document.getElementById('bearTask').textContent='รายจ่าย ฿'+f0(expenses.reduce((s,e)=>s+(+e.amount),0));
+  // rabbit: stock avail
+  const soldTS=sales.filter(s=>s.product==='ts').reduce((s,o)=>s+(+o.qty),0);
+  document.getElementById('rabbitTask').textContent='TS เหลือ '+(100-3-4-6-soldTS)+' คู่';
+  // duck: content count
+  document.getElementById('duckTask').textContent='Content: '+contents.length+' แผน';
+  // dog: ws events
+  const wsExp=expenses.filter(e=>e.category==='Workshop');
+  document.getElementById('dogTask').textContent='WS ฿'+f0(wsExp.reduce((s,e)=>s+(+e.amount),0));
+}
+
+// ── BUILDING CLICKS ───────────────────────────────────────────────
+document.querySelectorAll('.bld').forEach(g=>{
+  g.addEventListener('click',()=>openPanel(g.dataset.p));
+  g.addEventListener('mouseenter',()=>{
+    const lbl=g.querySelector('.blbl');
+    if(lbl) lbl.setAttribute('opacity','1');
+  });
+  g.addEventListener('mouseleave',()=>{
+    const lbl=g.querySelector('.blbl');
+    if(lbl) lbl.setAttribute('opacity','0');
+  });
+});
+
+// ── PANEL ─────────────────────────────────────────────────────────
+function openPanel(id,navBtn){
+  curPanel=id;
+  const p=PANELS[id]||{ico:'◎',title:id};
+  document.getElementById('pIco').textContent=p.ico;
+  document.getElementById('pTitle').textContent=p.title;
+  renderPanel(id);
+  document.getElementById('overlay').classList.add('open');
+  document.getElementById('panel').classList.add('open');
+  // nav highlight
+  document.querySelectorAll('.nb').forEach(b=>b.classList.remove('ac'));
+  if(navBtn) navBtn.classList.add('ac');
+  else{const nb=document.querySelector(`.nb[data-p="${id}"]`);if(nb)nb.classList.add('ac');}
+  // building highlight ring
+  const ringMap={overview:'hlHQ',sales:'hlSales',finance:'hlFin',stock:'hlStock',
+    marketing:'hlMkt',events:'hlWS',kol:'hlKOL',content:'hlContent',invoice:'hlInv'};
+  document.querySelectorAll('[id^="hl"]').forEach(e=>e.setAttribute('opacity','0'));
+  const r=document.getElementById(ringMap[id]);
+  if(r){r.setAttribute('opacity','0.7');}
+}
+function closePanel(){
+  document.getElementById('overlay').classList.remove('open');
+  document.getElementById('panel').classList.remove('open');
+  document.querySelectorAll('[id^="hl"]').forEach(e=>e.setAttribute('opacity','0'));
+  curPanel='';
+}
+
+function renderPanel(id){
+  const body=document.getElementById('pBody');
+  const fns={overview:rOverview,sales:rSales,finance:rFinance,stock:rStock,
+    marketing:rMarketing,events:rEvents,kol:rKol,content:rContent,invoice:rInvoice};
+  body.innerHTML=(fns[id]||rEmpty)();
+}
+
+// ── PANEL RENDERERS ───────────────────────────────────────────────
+function rEmpty(){return`<p style="color:var(--muted);font-size:13px">Coming soon</p>`;}
+
+function rOverview(){
+  const m=metrics();
+  const chRevs={};
+  sales.forEach(s=>{const r=calcSale(s).net;chRevs[s.channel]=(chRevs[s.channel]||0)+r;});
+  const maxCh=Math.max(...Object.values(chRevs),1);
+  const chHtml=Object.entries(chRevs).sort((a,b)=>b[1]-a[1]).map(([ch,v])=>`
+    <div style="margin-bottom:9px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:2px">
+        <span style="font-size:12px;font-weight:600">${CHAN_NAMES[ch]||ch}</span>
+        <span style="font-size:12px;font-weight:700">฿${f0(v)}</span>
+      </div>
+      <div class="bw"><div class="bf" style="width:${v/maxCh*100}%"></div></div>
+    </div>`).join('');
+  const prodUnits={};
+  sales.forEach(s=>{prodUnits[s.product]=(prodUnits[s.product]||0)+(+s.qty);});
+  const prodRows=Object.entries(prodUnits).map(([p,u])=>`
+    <tr><td>${PROD_NAMES[p]||p}</td>
+    <td class="nr">${u} คู่</td>
+    <td class="nr pos">฿${f0(sales.filter(s=>s.product===p).reduce((sum,s)=>sum+calcSale(s).net,0))}</td></tr>`).join('');
+  return`
+    <div class="kgrid">
+      <div class="kbox hi"><div class="kv">฿${f0(m.rev)}</div><div class="kl">รายได้</div></div>
+      <div class="kbox"><div class="kv" style="color:${m.profit>=0?'var(--green)':'var(--red)'}">฿${f0(m.profit)}</div><div class="kl">กำไร</div></div>
+      <div class="kbox"><div class="kv">${m.units}</div><div class="kl">คู่ขายได้</div></div>
+      <div class="kbox"><div class="kv">฿${f0(m.exp)}</div><div class="kl">รายจ่าย</div></div>
+    </div>
+    <div style="background:var(--ivory);border-radius:12px;padding:13px;margin-bottom:14px;border:1px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;margin-bottom:7px">
+        <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted)">Progress คืนทุน</span>
+        <span style="font-family:Georgia,serif;font-size:15px;font-weight:700;color:var(--tan)">${f1(m.recov)}%</span>
+      </div>
+      <div class="bw" style="height:10px"><div class="bf" style="width:${m.recov}%"></div></div>
+      <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:10px;color:var(--muted)">
+        <span>ยอดขาย ฿${f0(m.rev)}</span><span>เป้า ฿${f0(TOTAL_COST)}</span>
+      </div>
+    </div>
+    <div class="sh"><span class="st">รายได้แยกช่องทาง</span></div>
+    <div style="margin-bottom:14px">${chHtml||'<p style="color:var(--muted);font-size:12px">ยังไม่มีข้อมูล</p>'}</div>
+    <div class="sh"><span class="st">ยอดขายแยกรุ่น</span></div>
+    <table class="tbl" style="margin-bottom:14px">
+      <thead><tr><th>รุ่น</th><th class="nr">คู่</th><th class="nr">รายได้</th></tr></thead>
+      <tbody>${prodRows||'<tr><td colspan="3" style="color:var(--muted)">ยังไม่มี</td></tr>'}</tbody>
+    </table>`;
+}
+
+function rSales(){
+  const sorted=[...sales].sort((a,b)=>b.date.localeCompare(a.date));
+  const rows=sorted.map(s=>{
+    const c=calcSale(s);
+    const mc=c.margin>=40?'var(--green)':c.margin>=20?'var(--tan)':'var(--red)';
+    return`<tr onclick="openSaleMod('${s.id}')" style="cursor:pointer">
+      <td><div style="font-weight:700;font-size:12px">${PROD_NAMES[s.product]||s.product}</div>
+        <div style="font-size:10px;color:var(--muted)">${CHAN_NAMES[s.channel]||s.channel} · ${s.date}</div>
+        ${s.note?`<div style="font-size:10px;color:var(--muted);font-style:italic">${s.note}</div>`:''}</td>
+      <td class="nr" style="font-size:12px">${s.qty}</td>
+      <td class="nr"><div style="font-weight:700;font-size:12px">฿${f2(c.net)}</div>
+        <div style="font-size:10px;color:${mc};font-weight:700">${f1(c.margin)}%</div></td>
+    </tr>`;
+  }).join('');
+  const totU=sales.reduce((s,o)=>s+(+o.qty),0);
+  const totR=sales.reduce((s,o)=>s+calcSale(o).net,0);
+  const totP=sales.reduce((s,o)=>s+calcSale(o).profit,0);
+  return`
+    <div class="kgrid">
+      <div class="kbox"><div class="kv">${totU}</div><div class="kl">คู่รวม</div></div>
+      <div class="kbox hi"><div class="kv">฿${f0(totR)}</div><div class="kl">รายได้</div></div>
+      <div class="kbox"><div class="kv" style="color:${totP>=0?'var(--green)':'var(--red)'}">฿${f0(totP)}</div><div class="kl">กำไร</div></div>
+    </div>
+    <div class="sh"><span class="st">รายการทั้งหมด</span><button class="bsm" onclick="openSaleMod()">+ เพิ่ม</button></div>
+    <table class="tbl">
+      <thead><tr><th>สินค้า / ช่องทาง</th><th class="nr">คู่</th><th class="nr">รายได้</th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="3" style="color:var(--muted);text-align:center;padding:24px">ยังไม่มียอดขาย</td></tr>'}</tbody>
+    </table>
+    <p style="font-size:10px;color:var(--muted);margin-top:6px">* กดแถวเพื่อแก้ไข</p>`;
+}
+
+function rFinance(){
+  const m=metrics();
+  const totCOGS=sales.reduce((s,o)=>s+(UNIT_COST[o.product]||0)*(+o.qty),0);
+  const gross=m.rev-totCOGS;
+  const net=m.rev-m.exp;
+  const margin=m.rev>0?net/m.rev*100:0;
+  const byCat={};
+  expenses.forEach(e=>{byCat[e.category]=(byCat[e.category]||0)+(+e.amount);});
+  const catRows=Object.entries(byCat).sort((a,b)=>b[1]-a[1]).map(([c,v])=>`
+    <tr><td>${c}</td><td class="nr">฿${f2(v)}</td>
+    <td class="nr" style="font-size:10px;color:var(--muted)">${m.exp>0?f1(v/m.exp*100):'0'}%</td></tr>`).join('');
+  const plRows=[
+    {l:'รายได้สุทธิ',v:m.rev,c:''},
+    {l:'ต้นทุนสินค้า (COGS)',v:-totCOGS,c:'neg'},
+    {l:'Gross Profit',v:gross,c:gross>=0?'pos':'neg',b:true},
+    {l:'รายจ่ายดำเนินงาน',v:-m.exp,c:'neg'},
+    {l:'กำไรสุทธิ',v:net,c:net>=0?'pos':'neg',b:true,lg:true},
+  ].map(r=>`<tr style="${r.b?'border-top:1px solid var(--border)':''}">
+    <td style="font-weight:${r.b?700:400}">${r.l}</td>
+    <td class="nr ${r.c}" style="font-size:${r.lg?15:12}px;font-family:${r.lg?'Georgia,serif':'inherit'}">
+      ${r.v<0?'-':''}฿${f2(Math.abs(r.v))}</td></tr>`).join('');
+  return`
+    <div class="kgrid">
+      <div class="kbox hi"><div class="kv">฿${f0(m.rev)}</div><div class="kl">รายได้</div></div>
+      <div class="kbox"><div class="kv" style="color:${net>=0?'var(--green)':'var(--red)'}">฿${f0(net)}</div><div class="kl">กำไรสุทธิ</div></div>
+      <div class="kbox"><div class="kv">${f1(margin)}%</div><div class="kl">Net Margin</div></div>
+    </div>
+    <div class="sh"><span class="st">P&L Summary</span></div>
+    <div style="background:var(--ivory);border-radius:10px;overflow:hidden;margin-bottom:14px;border:1px solid var(--border)">
+      <table class="tbl" style="margin:0"><tbody>${plRows}</tbody></table>
+    </div>
+    <div class="sh"><span class="st">รายจ่ายแยกหมวด</span><button class="bsm" onclick="openExpMod()">+ เพิ่ม</button></div>
+    <table class="tbl" style="margin-bottom:14px">
+      <thead><tr><th>หมวด</th><th class="nr">จำนวน</th><th class="nr">%</th></tr></thead>
+      <tbody>${catRows||'<tr><td colspan="3" style="color:var(--muted)">ยังไม่มี</td></tr>'}</tbody>
+    </table>
+    <div style="background:var(--brown);border-radius:12px;padding:14px;color:white">
+      <div style="font-size:9px;color:rgba(255,255,255,.5);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px">บัญชีรับเงิน</div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:11px;color:rgba(255,255,255,.6)">ธนาคาร</span><span style="font-size:12px;font-weight:700">${BANK.bank}</span></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:11px;color:rgba(255,255,255,.6)">เลขบัญชี</span><span style="font-family:monospace;font-size:16px;font-weight:800;letter-spacing:1px">${BANK.number}</span></div>
+      <div style="display:flex;justify-content:space-between"><span style="font-size:11px;color:rgba(255,255,255,.6)">ชื่อ</span><span style="font-size:12px;font-weight:700">${BANK.name}</span></div>
+    </div>`;
+}
+
+function rStock(){
+  const soldByProd={};
+  sales.forEach(s=>{soldByProd[s.product]=(soldByProd[s.product]||0)+(+s.qty);});
+  const stocks=[
+    {id:'ts',name:'The Sparkling',color:'Ivory',total:100,mkt:3,gifted:4,held:11,price:449,cost:117.84},
+    {id:'fd_petite',name:'FD Petite (Lot 1)',color:'Cloud Dance · ไซส์เด็ก',total:200,mkt:3,gifted:15,held:32,price:379,cost:79.70},
+    {id:'fd',name:'FD Standard (Lot 2)',color:'Cloud Dance · ไซส์ทั่วไป',total:200,mkt:3,gifted:1,held:18,price:379,cost:21.93},
+  ];
+  return`
+    <div class="sh"><span class="st">สต็อกทั้งหมด</span></div>
+    ${stocks.map(p=>{
+      const sold=soldByProd[p.id]||0;
+      const avail=p.total-p.mkt-p.gifted-p.held-sold;
+      const margin=(p.price-p.cost)/p.price*100;
+      const pct=Math.min(sold/(p.total-p.mkt-p.gifted)*100,100);
+      return`<div style="background:var(--ivory);border-radius:12px;padding:13px;margin-bottom:10px;border:1px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:9px">
+          <div><div style="font-weight:700;font-size:13px">${p.name}</div>
+            <div style="font-size:10px;color:var(--muted)">${p.color} · ฿${p.price} · ต้นทุน ฿${f2(p.cost)}/คู่</div></div>
+          <div style="text-align:right"><div style="font-family:Georgia,serif;font-size:26px;font-weight:700;color:${avail<=10?'var(--red)':'var(--brown)'}">${avail}</div>
+            <div style="font-size:9px;color:var(--muted)">พร้อมขาย</div></div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-bottom:7px">
+          ${[{l:'ทั้งหมด',v:p.total,bg:'var(--ivory)'},{l:'Marketing',v:p.mkt+p.gifted,bg:'#FEF9C3'},
+            {l:'สตูดิโอ',v:p.held,bg:'#DBEAFE'},{l:'ขายแล้ว',v:sold,bg:'#DCFCE7'},
+            {l:'พร้อมขาย',v:avail,bg:avail<=10?'#FEE2E2':'#DCFCE7'}]
+          .map(s=>`<div style="background:${s.bg};border-radius:7px;padding:5px 2px;text-align:center">
+            <div style="font-size:15px;font-weight:800">${s.v}</div>
+            <div style="font-size:8px;color:var(--muted)">${s.l}</div></div>`).join('')}
+        </div>
+        <div class="bw"><div class="bf" style="width:${pct}%"></div></div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px;text-align:right">ขาย ${f1(pct)}% · Margin ${f1(margin)}%</div>
+      </div>`;
+    }).join('')}`;
+}
+
+function rMarketing(){
+  const mktExp=expenses.filter(e=>e.category==='การตลาด');
+  const totMkt=mktExp.reduce((s,e)=>s+(+e.amount),0);
+  const totRev=sales.reduce((s,o)=>s+calcSale(o).net,0);
+  const roi=totMkt>0?(totRev-totMkt)/totMkt*100:0;
+  const rows=mktExp.sort((a,b)=>b.date.localeCompare(a.date)).map(e=>`
+    <tr><td><div style="font-size:12px">${e.desc}</div><div style="font-size:10px;color:var(--muted)">${e.date}</div></td>
+    <td class="nr neg">฿${f2(+e.amount)}</td></tr>`).join('');
+  return`
+    <div class="kgrid">
+      <div class="kbox hi"><div class="kv">฿${f0(totMkt)}</div><div class="kl">ค่าการตลาด</div></div>
+      <div class="kbox"><div class="kv" style="color:var(--green)">${f1(roi)}%</div><div class="kl">ROI est.</div></div>
+    </div>
+    <div class="sh"><span class="st">รายการค่าการตลาด</span><button class="bsm" onclick="openExpMod('การตลาด')">+ เพิ่ม</button></div>
+    <table class="tbl">
+      <thead><tr><th>รายการ</th><th class="nr">฿</th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="2" style="color:var(--muted)">ยังไม่มี</td></tr>'}</tbody>
+    </table>`;
+}
+
+function rEvents(){
+  const wsExp=expenses.filter(e=>e.category==='Workshop');
+  const totWs=wsExp.reduce((s,e)=>s+(+e.amount),0);
+  const ppp=totWs/12;
+  return`
+    <div style="background:var(--brown);border-radius:12px;padding:16px;color:white;margin-bottom:14px">
+      <div style="font-size:9px;color:rgba(255,255,255,.5);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">Make Your VALS</div>
+      <div style="font-family:Georgia,serif;font-size:18px;margin-bottom:2px">26 ก.ย. 2569</div>
+      <div style="font-size:11px;color:rgba(255,255,255,.6)">DIY สายถุงเท้า · 3 รอบ × 4 คน = 12 คน</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px">
+        ${[{l:'ต้นทุนรวม',v:'฿'+f0(totWs)},{l:'ต้นทุน/คน',v:'฿'+f0(ppp)},{l:'ความจุ',v:'12 คน'}]
+          .map(s=>`<div style="background:rgba(255,255,255,.08);border-radius:8px;padding:8px;text-align:center">
+            <div style="font-family:Georgia,serif;font-size:14px;font-weight:700">${s.v}</div>
+            <div style="font-size:9px;color:rgba(255,255,255,.5)">${s.l}</div></div>`).join('')}
+      </div>
+    </div>
+    <div style="background:var(--sage);border-radius:10px;padding:12px;margin-bottom:14px;color:var(--brown)">
+      <div style="font-size:11px;font-weight:700;margin-bottom:6px">💡 ราคาที่แนะนำ</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;font-size:12px">
+        <div style="text-align:center"><div style="font-weight:700;font-size:14px">฿600</div><div style="font-size:9px">คุ้มทุน</div></div>
+        <div style="text-align:center"><div style="font-weight:700;font-size:14px">฿800</div><div style="font-size:9px">แนะนำ</div></div>
+        <div style="text-align:center"><div style="font-weight:700;font-size:14px">฿1,000</div><div style="font-size:9px">Premium</div></div>
+      </div>
+    </div>
+    <div class="sh"><span class="st">รายการค่าใช้จ่าย</span><button class="bsm" onclick="openExpMod('Workshop')">+ เพิ่ม</button></div>
+    <table class="tbl">
+      <thead><tr><th>รายการ</th><th class="nr">฿</th></tr></thead>
+      <tbody>${wsExp.map(e=>`<tr><td><div style="font-size:12px">${e.desc.replace('[Make Your VALS] ','')}</div></td><td class="nr neg">฿${f2(+e.amount)}</td></tr>`).join('')||'<tr><td colspan="2" style="color:var(--muted)">ยังไม่มี</td></tr>'}</tbody>
+    </table>`;
+}
+
+function rKol(){
+  const statusMap={sent:'🚀 ส่งแล้ว',posted:'✅ โพสต์แล้ว',pending:'⏳ รอโพสต์'};
+  const statusColor={sent:'#EEF3FF',posted:'#DCFCE7',pending:'#FEF9C3'};
+  const statusTxt={sent:'var(--blue)',posted:'var(--green)',pending:'#7A5A20'};
+  const cards=kols.sort((a,b)=>b.sent.localeCompare(a.sent)).map(k=>`
+    <div class="kol-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div><div class="kol-name">${k.name}</div>
+          <div class="kol-status">${k.platform} · ${k.sent}</div>
+          <div style="font-size:11px;color:var(--brown2);margin-top:3px">${k.item}</div>
+          ${k.note?`<div style="font-size:10px;color:var(--muted);margin-top:2px">${k.note}</div>`:''}
+        </div>
+        <span style="background:${statusColor[k.status]||'var(--ivory)'};color:${statusTxt[k.status]||'var(--muted)'};padding:3px 9px;border-radius:99px;font-size:10px;font-weight:700;white-space:nowrap">
+          ${statusMap[k.status]||k.status}</span>
+      </div>
+    </div>`).join('');
+  return`
+    <div class="kgrid">
+      <div class="kbox hi"><div class="kv">${kols.length}</div><div class="kl">KOL รวม</div></div>
+      <div class="kbox"><div class="kv">${kols.filter(k=>k.status==='posted').length}</div><div class="kl">โพสต์แล้ว</div></div>
+      <div class="kbox"><div class="kv">${kols.filter(k=>k.status==='pending').length}</div><div class="kl">รอโพสต์</div></div>
+    </div>
+    <div class="sh"><span class="st">รายการ KOL</span><button class="bsm" onclick="openKolMod()">+ เพิ่ม</button></div>
+    ${cards||'<p style="color:var(--muted);font-size:12px;text-align:center;padding:24px 0">ยังไม่มี KOL — กด + เพื่อเพิ่ม</p>'}`;
+}
+
+function rContent(){
+  const statusColor={plan:'#F5F5F5',shoot:'#FEF9C3',edit:'#DBEAFE',posted:'#DCFCE7'};
+  const statusLabel={plan:'แผน',shoot:'ถ่ายแล้ว',edit:'ตัดแล้ว',posted:'โพสต์แล้ว'};
+  const sorted=[...contents].sort((a,b)=>a.date.localeCompare(b.date));
+  const items=sorted.map(c=>{
+    const d=new Date(c.date);
+    const mo=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'][d.getMonth()];
+    return`<div class="cal-item">
+      <div class="cal-date"><div class="cal-day">${d.getDate()}</div><div class="cal-mo">${mo}</div></div>
+      <div class="cal-body">
+        <div class="cal-title">${c.title}</div>
+        <div class="cal-ch">${c.channel} · <span style="background:${statusColor[c.status]||'#F5F5F5'};padding:1px 7px;border-radius:99px;font-size:9px;font-weight:700">${statusLabel[c.status]||c.status}</span></div>
+        ${c.note?`<div style="font-size:10px;color:var(--muted);margin-top:2px">${c.note}</div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+  return`
+    <div class="kgrid">
+      <div class="kbox hi"><div class="kv">${contents.length}</div><div class="kl">Content รวม</div></div>
+      <div class="kbox"><div class="kv">${contents.filter(c=>c.status==='posted').length}</div><div class="kl">โพสต์แล้ว</div></div>
+      <div class="kbox"><div class="kv">${contents.filter(c=>c.status==='plan').length}</div><div class="kl">แผน</div></div>
+    </div>
+    <div class="sh"><span class="st">Content Calendar</span><button class="bsm" onclick="openContentMod()">+ เพิ่ม</button></div>
+    ${items||'<p style="color:var(--muted);font-size:12px;text-align:center;padding:24px 0">ยังไม่มี content plan — กด + เพื่อเพิ่ม</p>'}`;
+}
+
+function rInvoice(){
+  const studios=[
+    {id:'studio_peachlates',name:'Peachlates Studio',gp:0.20},
+    {id:'studio_madimadi',name:'Madi Madi Studio',gp:0},
+  ];
+  return studios.map(st=>{
+    const stSales=sales.filter(s=>s.channel===st.id).sort((a,b)=>b.date.localeCompare(a.date));
+    const byMonth={};
+    stSales.forEach(s=>{const m=s.date.slice(0,7);if(!byMonth[m])byMonth[m]=[];byMonth[m].push(s);});
+    const monthHtml=Object.entries(byMonth).sort((a,b)=>b[0].localeCompare(a[0])).map(([m,ss])=>{
+      const gross=ss.reduce((sum,s)=>sum+s.sale_price*(+s.qty),0);
+      const gpAmt=gross*st.gp;
+      const net=gross-gpAmt;
+      return`<div style="background:var(--ivory);border-radius:10px;padding:12px;margin-bottom:8px;border:1px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+          <div style="font-size:11px;font-weight:700;color:var(--muted)">${m}</div>
+          <div style="font-family:Georgia,serif;font-size:16px;font-weight:700;color:var(--tan)">฿${f2(net)}</div>
+        </div>
+        ${ss.map(s=>`<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:11px">
+          <span>${PROD_NAMES[s.product]||s.product} × ${s.qty}</span>
+          <span>฿${f2(s.sale_price*(+s.qty)*(1-st.gp))}</span></div>`).join('')}
+        ${st.gp>0?`<div style="font-size:10px;color:var(--red);margin-top:4px">หัก GP ${st.gp*100}% = -฿${f2(gpAmt)}</div>`:''}
+      </div>`;
+    }).join('');
+    const totNet=stSales.reduce((s,o)=>s+o.sale_price*(+o.qty)*(1-st.gp),0);
+    return`<div style="margin-bottom:20px">
+      <div style="font-family:Georgia,serif;font-size:15px;font-weight:700;margin-bottom:10px">${st.name}</div>
+      ${monthHtml||'<p style="color:var(--muted);font-size:12px">ยังไม่มียอดขาย</p>'}
+      ${totNet>0?`<div style="background:var(--brown);border-radius:10px;padding:12px;color:white">
+        <div style="font-size:9px;color:rgba(255,255,255,.5);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px">ยอดรวมทั้งหมด · โอนมาที่</div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:11px;color:rgba(255,255,255,.6)">เลขบัญชี</span><span style="font-family:monospace;font-size:16px;font-weight:800;letter-spacing:1px">${BANK.number}</span></div>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:11px;color:rgba(255,255,255,.6)">${BANK.name}</span>
+          <span style="font-family:Georgia,serif;font-size:20px;font-weight:700;color:var(--tan)">฿${f2(totNet)}</span>
+        </div>
+      </div>`:''}
+    </div>`;
+  }).join('<hr style="border:none;border-top:1px solid var(--border);margin:4px 0 16px">');
+}
+
+// ── CHIP SELECT ───────────────────────────────────────────────────
+function sc(btn,type){
+  btn.parentElement.querySelectorAll('.ch').forEach(c=>c.classList.remove('sl'));
+  btn.classList.add('sl');
+  const v=btn.dataset.v;
+  if(type==='prod'){selProd=v;document.getElementById('sPrice').value=PROD_PRICE[v]||449;updatePrev();}
+  else if(type==='chan'){selChan=v;const d=CHAN_DEF[v]||{};
+    document.getElementById('sGP').value=d.gp||0;
+    document.getElementById('sShip').value=d.ship||0;
+    document.getElementById('sPF').value=d.pf||0;updatePrev();}
+  else if(type==='cat'){selCat=v;}
+  else if(type==='cst'){selCst=v;}
+}
+
+// ── SALE MODAL ────────────────────────────────────────────────────
+function openSaleMod(id=null){
+  editSaleId=id;
+  document.getElementById('smTitle').textContent=id?'แก้ไขยอดขาย':'บันทึกยอดขาย';
+  if(id){
+    const s=sales.find(x=>x.id===id)||{};
+    selProd=s.product||'ts'; selChan=s.channel||'studio_peachlates';
+    document.getElementById('sDate').value=s.date||'';
+    document.getElementById('sQty').value=s.qty||1;
+    document.getElementById('sPrice').value=s.sale_price||449;
+    document.getElementById('sGP').value=s.gp_pct||0;
+    document.getElementById('sShip').value=s.shipping||0;
+    document.getElementById('sPF').value=s.platform_fee||0;
+    document.getElementById('sNote').value=s.note||'';
+  } else {
+    selProd='ts'; selChan='studio_peachlates';
+    document.getElementById('sDate').value=new Date().toISOString().slice(0,10);
+    document.getElementById('sQty').value=1; document.getElementById('sPrice').value=449;
+    document.getElementById('sGP').value=0; document.getElementById('sShip').value=0;
+    document.getElementById('sPF').value=0; document.getElementById('sNote').value='';
+  }
+  document.querySelectorAll('[data-v]').forEach(b=>{
+    if(b.closest('#saleMod')){
+      if(b.parentElement.id&&b.parentElement.id.includes('prod'))b.classList.toggle('sl',b.dataset.v===selProd);
+    }
+  });
+  ['sQty','sPrice','sGP','sShip','sPF'].forEach(i=>document.getElementById(i).addEventListener('input',updatePrev));
+  updatePrev();
+  document.getElementById('saleMod').classList.add('open');
+}
+function closeSaleMod(){document.getElementById('saleMod').classList.remove('open');editSaleId=null;}
+
+function updatePrev(){
+  const s={product:selProd,qty:+document.getElementById('sQty').value||1,
+    sale_price:+document.getElementById('sPrice').value||0,
+    gp_pct:+document.getElementById('sGP').value||0,
+    shipping:+document.getElementById('sShip').value||0,
+    platform_fee:+document.getElementById('sPF').value||0};
+  const c=calcSale(s);
+  document.getElementById('prvRev').textContent='฿'+f2(c.net);
+  document.getElementById('prvPro').style.color=c.profit>=0?'#6EE7A0':'#FCA5A5';
+  document.getElementById('prvPro').textContent='฿'+f2(c.profit);
+  document.getElementById('prvMar').style.color=c.margin>=40?'#6EE7A0':c.margin>=20?'#FCD34D':'#FCA5A5';
+  document.getElementById('prvMar').textContent=c.margin.toFixed(1)+'%';
+}
+
+async function saveSale(){
+  const s={id:editSaleId||'s_'+Date.now(),date:document.getElementById('sDate').value,
+    product:selProd,qty:+document.getElementById('sQty').value||1,channel:selChan,
+    sale_price:+document.getElementById('sPrice').value||0,gp_pct:+document.getElementById('sGP').value||0,
+    shipping:+document.getElementById('sShip').value||0,platform_fee:+document.getElementById('sPF').value||0,
+    bag:0,print:0,other_cost:0,note:document.getElementById('sNote').value};
+  try{
+    if(db)await db.doc('sales/'+s.id).set(s);
+    else{const i=sales.findIndex(x=>x.id===s.id);if(i>=0)sales[i]=s;else sales.push(s);refresh();}
+    closeSaleMod();toast(editSaleId?'แก้ไขแล้ว ✓':'บันทึกยอดขายแล้ว ✓');
+  }catch(e){toast('เกิดข้อผิดพลาด',false);}
+}
+
+// ── EXPENSE MODAL ─────────────────────────────────────────────────
+function openExpMod(cat){
+  if(cat){selCat=cat;document.querySelectorAll('#expMod .ch').forEach(c=>c.classList.toggle('sl',c.dataset.v===cat));}
+  document.getElementById('eDesc').value='';document.getElementById('eAmt').value='';
+  document.getElementById('eDate').value=new Date().toISOString().slice(0,10);
+  document.getElementById('expMod').classList.add('open');
+}
+function closeExpMod(){document.getElementById('expMod').classList.remove('open');}
+async function saveExp(){
+  const e={id:'e_'+Date.now(),date:document.getElementById('eDate').value,
+    category:selCat,desc:document.getElementById('eDesc').value,amount:+document.getElementById('eAmt').value||0};
+  if(!e.desc||!e.amount){toast('กรุณากรอกข้อมูลให้ครบ',false);return;}
+  try{
+    if(db)await db.doc('expenses/'+e.id).set(e);
+    else{expenses.push(e);refresh();}
+    closeExpMod();toast('บันทึกรายจ่ายแล้ว ✓');
+  }catch(err){toast('เกิดข้อผิดพลาด',false);}
+}
+
+// ── KOL MODAL ────────────────────────────────────────────────────
+function openKolMod(){
+  ['kName','kItem','kNote'].forEach(i=>document.getElementById(i).value='');
+  document.getElementById('kSent').value=new Date().toISOString().slice(0,10);
+  document.getElementById('kStatus').value='sent';
+  document.getElementById('kolMod').classList.add('open');
+}
+function closeKolMod(){document.getElementById('kolMod').classList.remove('open');}
+async function saveKol(){
+  const k={id:'k_'+Date.now(),name:document.getElementById('kName').value,
+    platform:document.getElementById('kPlatform').value,item:document.getElementById('kItem').value,
+    sent:document.getElementById('kSent').value,status:document.getElementById('kStatus').value,
+    note:document.getElementById('kNote').value};
+  if(!k.name){toast('กรุณาใส่ชื่อ KOL',false);return;}
+  try{
+    if(db)await db.doc('kols/'+k.id).set(k);
+    else{kols.push(k);refresh();}
+    closeKolMod();toast('เพิ่ม KOL แล้ว ✓');
+  }catch(e){toast('เกิดข้อผิดพลาด',false);}
+}
+
+// ── CONTENT MODAL ─────────────────────────────────────────────────
+function openContentMod(){
+  ['cTitle','cNote'].forEach(i=>document.getElementById(i).value='');
+  document.getElementById('cDate').value=new Date().toISOString().slice(0,10);
+  selCst='plan';
+  document.querySelectorAll('#contentMod .ch').forEach(c=>c.classList.toggle('sl',c.dataset.v==='plan'));
+  document.getElementById('contentMod').classList.add('open');
+}
+function closeContentMod(){document.getElementById('contentMod').classList.remove('open');}
+async function saveContent(){
+  const c={id:'c_'+Date.now(),title:document.getElementById('cTitle').value,
+    channel:document.getElementById('cChan').value,date:document.getElementById('cDate').value,
+    status:selCst,note:document.getElementById('cNote').value};
+  if(!c.title){toast('กรุณาใส่หัวข้อ',false);return;}
+  try{
+    if(db)await db.doc('contents/'+c.id).set(c);
+    else{contents.push(c);refresh();}
+    closeContentMod();toast('เพิ่ม content plan แล้ว ✓');
+  }catch(e){toast('เกิดข้อผิดพลาด',false);}
+}
+
+// ── MODAL BG CLOSE ────────────────────────────────────────────────
+['saleMod','expMod','kolMod','contentMod'].forEach(id=>{
+  document.getElementById(id).addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('open');});
+});
+
+// ── INIT ──────────────────────────────────────────────────────────
+openPanel('overview');
+init();
+</script>
+</body>
+</html>
